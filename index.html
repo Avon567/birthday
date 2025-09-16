@@ -1,19 +1,214 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Birthday Countdown</title>
+  <style>
+    :root{
+      --bg:#f9fafb;
+      --card:#ffffff;
+      --accent:#2563eb;
+      --accent-light:#60a5fa;
+      --muted:#64748b;
+      --border:#e5e7eb;
+      --shadow: rgba(0,0,0,0.06);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background:var(--bg);
+      color:#111827;
+      padding:24px;
+    }
+
+    .widget {
+      width:100%;
+      max-width:520px;
+      background:var(--card);
+      border-radius:12px;
+      box-shadow: 0 6px 20px var(--shadow);
+      border:1px solid var(--border);
+      padding:18px;
+    }
+
+    .header {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:12px;
+    }
+    .logo {
+      width:48px;
+      height:48px;
+      background:linear-gradient(135deg,var(--accent), var(--accent-light));
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      color:#fff;
+      font-size:18px;
+    }
+    .title {
+      font-size:18px;
+      font-weight:600;
+      line-height:1;
+    }
+    .subtitle { color:var(--muted); font-size:13px; margin-top:2px; }
+
+    .controls {
+      display:flex;
+      gap:8px;
+      margin:12px 0 18px 0;
+      align-items:center;
+    }
+
+    input[type="date"]{
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid var(--border);
+      background:#fff;
+      color:#111827;
+      font-size:14px;
+      outline:none;
+      flex:1;
+    }
+
+    button {
+      padding:10px 14px;
+      border-radius:8px;
+      border:0;
+      cursor:pointer;
+      font-weight:600;
+      background:linear-gradient(90deg,var(--accent), var(--accent-light));
+      color:#fff;
+      box-shadow: 0 4px 12px rgba(37,99,235,0.2);
+    }
+
+    .countdown {
+      display:grid;
+      grid-template-columns: repeat(4,1fr);
+      gap:12px;
+      margin-top:8px;
+    }
+
+    .tile {
+      background:#f8fafc;
+      padding:12px;
+      text-align:center;
+      border-radius:8px;
+      border:1px solid var(--border);
+    }
+    .num { font-size:28px; font-weight:700; color:var(--accent); }
+    .lbl { font-size:12px; color:var(--muted); margin-top:6px; text-transform:uppercase; letter-spacing:0.06em; }
+
+    .footer {
+      margin-top:14px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .small {
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    @media (max-width:420px){
+      .countdown { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
 </head>
 <body>
-  <div id="inch-calculator-icw" data-ct="days_until_birthday" data-cw="100%" data-ch="500" data-cv="MTE3NTc1MzIyNTU=">
-    <div id="inch-calculator-icwh">Birthday Countdown</div>
-    <div id="inch-calculator-icwf">
-      <a id="inch-calculator-icwi" href="https://www.inchcalculator.com/how-many-days-until-my-birthday/" target="_blank">
-        <img id="inch-calculator-icwl" src="https://cdn.inchcalculator.com/e/inch-calculator-logo-tiny.png" alt="Inch Calculator Logo" width="40" height="49">
-        <span id="inch-calculator-icwb">Inch Calculator</span>
-      </a>
+  <div class="widget" id="birthday-widget" aria-live="polite">
+    <div class="header">
+      <div class="logo" aria-hidden="true">BD</div>
+      <div>
+        <div class="title">Birthday Countdown</div>
+        <div class="subtitle">See how many days until the next birthday</div>
+      </div>
+    </div>
+
+    <div class="controls" role="region" aria-label="Birthday controls">
+      <input id="date-input" type="date" aria-label="Birthday date" />
+      <button id="set-btn">Set</button>
+    </div>
+
+    <div id="countdown" class="countdown" aria-hidden="false">
+      <div class="tile"><div class="num" id="years">--</div><div class="lbl">Years</div></div>
+      <div class="tile"><div class="num" id="days">--</div><div class="lbl">Days</div></div>
+      <div class="tile"><div class="num" id="hours">--</div><div class="lbl">Hours</div></div>
+      <div class="tile"><div class="num" id="minutes">--</div><div class="lbl">Minutes</div></div>
+    </div>
+
+    <div class="footer">
+      <div class="small" id="message">Pick your birthday above.</div>
+      <div class="small">Made by you • <time id="now-year"></time></div>
     </div>
   </div>
-  <script src="https://cdn.inchcalculator.com/e/widgets.min.js" async defer></script>
+
+  <script>
+    function nextBirthdayFromInput(val){
+      if(!val) return null;
+      const [y,m,d] = val.split('-').map(Number);
+      const now = new Date();
+      let candidate = new Date(now.getFullYear(), m-1, d, 0,0,0,0);
+      if(candidate < now){ candidate = new Date(now.getFullYear()+1, m-1, d, 0,0,0,0); }
+      return candidate;
+    }
+
+    function updateUI(target){
+      if(!target){
+        ["years","days","hours","minutes"].forEach(id=>document.getElementById(id).textContent="--");
+        document.getElementById("message").textContent="Pick your birthday above.";
+        return;
+      }
+      const now = new Date();
+      const diff = target - now;
+      if(diff<=0){
+        document.getElementById("message").textContent="Happy Birthday! 🎉";
+        ["years","days","hours","minutes"].forEach(id=>document.getElementById(id).textContent="0");
+        return;
+      }
+      const days = Math.floor(diff/(1000*60*60*24));
+      const hours = Math.floor((diff/(1000*60*60))%24);
+      const minutes = Math.floor((diff/(1000*60))%60);
+      const years = Math.floor(days/365);
+      document.getElementById("years").textContent=years;
+      document.getElementById("days").textContent=days;
+      document.getElementById("hours").textContent=hours;
+      document.getElementById("minutes").textContent=minutes;
+      const opts={month:"short",day:"numeric"};
+      document.getElementById("message").textContent="Next birthday on "+target.toLocaleDateString(undefined,opts)+".";
+    }
+
+    const DATE_KEY="birthday-widget-date";
+    const dateInput=document.getElementById("date-input");
+    const setBtn=document.getElementById("set-btn");
+    const nowYearEl=document.getElementById("now-year");
+    nowYearEl.textContent=new Date().getFullYear();
+    let saved=localStorage.getItem(DATE_KEY);
+    if(saved) dateInput.value=saved;
+    let target=saved?nextBirthdayFromInput(saved):null;
+    if(target) updateUI(target);
+
+    setBtn.addEventListener("click",()=>{
+      const v=dateInput.value;
+      if(!v){localStorage.removeItem(DATE_KEY);target=null;updateUI(null);return;}
+      localStorage.setItem(DATE_KEY,v);
+      target=nextBirthdayFromInput(v);
+      updateUI(target);
+    });
+
+    setInterval(()=>{ if(target) updateUI(target); },60000);
+  </script>
 </body>
 </html>
