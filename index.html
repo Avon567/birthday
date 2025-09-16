@@ -52,10 +52,10 @@
     .header {
       display:flex;
       align-items:center;
-      gap:12px;
-      margin-bottom:12px;
       justify-content:space-between;
       flex-wrap:wrap;
+      gap:12px;
+      margin-bottom:12px;
     }
     .logo {
       width:48px;
@@ -66,18 +66,18 @@
       align-items:center;
       justify-content:center;
       font-size:22px;
-      line-height:1;
     }
-    .title { font-size:18px; font-weight:600; line-height:1; }
+    .title { font-size:18px; font-weight:600; }
     .subtitle { color:var(--muted); font-size:13px; margin-top:2px; }
     .controls {
       display:flex;
       gap:8px;
       margin:12px 0 18px 0;
       align-items:center;
-      flex-wrap:wrap;
+      flex-wrap:nowrap;
     }
     input[type="date"]{
+      flex:1;
       padding:10px 12px;
       border-radius:8px;
       border:1px solid var(--border);
@@ -85,8 +85,7 @@
       color:var(--text);
       font-size:14px;
       outline:none;
-      flex:1;
-      min-width:160px;
+      min-width:140px;
     }
     button {
       padding:10px 14px;
@@ -97,10 +96,11 @@
       background:linear-gradient(90deg,var(--accent), var(--accent-light));
       color:#fff;
       box-shadow: 0 4px 12px rgba(37,99,235,0.2);
+      white-space:nowrap;
     }
     .countdown {
       display:grid;
-      grid-template-columns: repeat(5,1fr);
+      grid-template-columns: repeat(auto-fit, minmax(80px,1fr));
       gap:12px;
       margin-top:8px;
     }
@@ -110,7 +110,6 @@
       text-align:center;
       border-radius:8px;
       border:1px solid var(--border);
-      transition: background 0.3s;
     }
     body.dark .tile{background:#111827;}
     .num { font-size:24px; font-weight:700; color:var(--accent); }
@@ -128,13 +127,9 @@
     .small { font-size:12px; color:var(--muted); }
     .toggle-btn { font-size:16px; background:none; border:none; cursor:pointer; color:var(--text); }
     @media (max-width:480px){
-      .header {flex-direction:column;align-items:flex-start;gap:8px;}
-      .controls {flex-direction:column;width:100%;}
-      .controls input[type="date"], .controls button {width:100%;}
-      .countdown {grid-template-columns: repeat(2,1fr);}
-    }
-    @media (max-width:340px){
-      .countdown {grid-template-columns:1fr;}
+      .controls {flex-wrap:wrap;}
+      .controls input[type="date"]{flex:100%;}
+      .controls button {flex:1;}
     }
     canvas#confetti {
       position:absolute;
@@ -149,7 +144,7 @@
     <canvas id="confetti"></canvas>
     <div class="header">
       <div style="display:flex; gap:12px; align-items:center;">
-        <div class="logo" aria-hidden="true">🎂</div>
+        <div class="logo">🎂</div>
         <div>
           <div class="title">Birthday Countdown</div>
           <div class="subtitle">See how many days until the next birthday</div>
@@ -157,13 +152,12 @@
       </div>
       <button class="toggle-btn" id="dark-toggle" aria-label="Toggle dark mode">🌙</button>
     </div>
-    <div class="controls" role="region" aria-label="Birthday controls">
+    <div class="controls">
       <input id="date-input" type="date" aria-label="Birthday date" />
       <button id="set-btn">Set</button>
       <button id="share-btn">Share</button>
     </div>
-    <div id="countdown" class="countdown" aria-hidden="false">
-      <div class="tile"><div class="num" id="years">--</div><div class="lbl">Years</div></div>
+    <div id="countdown" class="countdown">
       <div class="tile"><div class="num" id="months">--</div><div class="lbl">Months</div></div>
       <div class="tile"><div class="num" id="days">--</div><div class="lbl">Days</div></div>
       <div class="tile"><div class="num" id="hours">--</div><div class="lbl">Hours</div></div>
@@ -186,7 +180,7 @@
     const darkToggle=document.getElementById("dark-toggle");
     const messageEl=document.getElementById("message");
     nowYearEl.textContent=new Date().getFullYear();
-    let target=null, birthDate=null, confettiPlayed=false;
+    let target=null,birthDate=null,confettiPlayed=false;
 
     // Dark Mode
     if(localStorage.getItem(THEME_KEY)==="dark"){document.body.classList.add("dark");darkToggle.textContent="☀️";}
@@ -197,28 +191,20 @@
       darkToggle.textContent=dark?"☀️":"🌙";
     });
 
-    // Birthday logic
+    // Next birthday logic
     function nextBirthdayFromInput(val){
       if(!val) return null;
-      const [y,m,d] = val.split('-').map(Number);
+      const [y,m,d]=val.split('-').map(Number);
       birthDate=new Date(y,m-1,d);
       const now=new Date();
       let candidate=new Date(now.getFullYear(),m-1,d,0,0,0,0);
       if(candidate<now){candidate=new Date(now.getFullYear()+1,m-1,d,0,0,0,0);}
       return candidate;
     }
-    function calcAge(birth, now){
-      let years=now.getFullYear()-birth.getFullYear();
-      let months=now.getMonth()-birth.getMonth();
-      let days=now.getDate()-birth.getDate();
-      if(days<0){months--;const prev=new Date(now.getFullYear(),now.getMonth(),0);days+=prev.getDate();}
-      if(months<0){years--;months+=12;}
-      return {years,months,days};
-    }
 
     function updateUI(target){
       if(!target){
-        ["years","months","days","hours","minutes","seconds"].forEach(id=>document.getElementById(id).textContent="--");
+        ["months","days","hours","minutes","seconds"].forEach(id=>document.getElementById(id).textContent="--");
         messageEl.textContent="Pick your birthday above.";
         return;
       }
@@ -226,7 +212,7 @@
       const diff=target-now;
       if(diff<=0){
         messageEl.textContent="Happy Birthday! 🎉";
-        ["years","months","days","hours","minutes","seconds"].forEach(id=>document.getElementById(id).textContent="0");
+        ["months","days","hours","minutes","seconds"].forEach(id=>document.getElementById(id).textContent="0");
         if(!confettiPlayed){playConfetti();confettiPlayed=true;}
         return;
       }
@@ -234,10 +220,9 @@
       const hours=Math.floor((diff/(1000*60*60))%24);
       const minutes=Math.floor((diff/(1000*60))%60);
       const seconds=Math.floor((diff/1000)%60);
-      const age=birthDate?calcAge(birthDate,now):{years:"--",months:"--",days:"--"};
-      document.getElementById("years").textContent=age.years;
-      document.getElementById("months").textContent=age.months;
-      document.getElementById("days").textContent=days;
+      const months=Math.floor(days/30); // approx months
+      document.getElementById("months").textContent=months;
+      document.getElementById("days").textContent=days%30;
       document.getElementById("hours").textContent=hours;
       document.getElementById("minutes").textContent=minutes;
       document.getElementById("seconds").textContent=seconds;
@@ -251,39 +236,18 @@
       const ctx=canvas.getContext("2d");
       canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight;
       let particles=[];
-      for(let i=0;i<150;i++){
+      for(let i=0;i<120;i++){
         particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,
           r:Math.random()*6+4,dx:Math.random()*4-2,dy:Math.random()*4-2,color:`hsl(${Math.random()*360},100%,50%)`});
       }
-      function draw(){
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        particles.forEach(p=>{
-          ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.color;ctx.fill();
-        });
-      }
-      function update(){
-        particles.forEach(p=>{
-          p.x+=p.dx;p.y+=p.dy;p.dy+=0.05;
-          if(p.y>canvas.height) p.y=0;
-          if(p.x>canvas.width) p.x=0;
-          if(p.x<0) p.x=canvas.width;
-        });
-      }
+      function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);particles.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=p.color;ctx.fill();});}
+      function update(){particles.forEach(p=>{p.x+=p.dx;p.y+=p.dy;p.dy+=0.05;if(p.y>canvas.height)p.y=0;if(p.x>canvas.width)p.x=0;if(p.x<0)p.x=canvas.width;});}
       let frames=0;
-      function loop(){
-        draw();update();frames++;
-        if(frames<200){requestAnimationFrame(loop);}else{ctx.clearRect(0,0,canvas.width,canvas.height);}
-      }
+      function loop(){draw();update();frames++;if(frames<200){requestAnimationFrame(loop);}else{ctx.clearRect(0,0,canvas.width,canvas.height);}}
       loop();
     }
 
-    // Notifications
-    if("Notification" in window && Notification.permission!=="granted"){Notification.requestPermission();}
-    function notifyBirthday(){
-      if(Notification.permission==="granted"){new Notification("🎉 Happy Birthday!",{body:"Your countdown reached 0!"});}
-    }
-
-    // Share Button
+    // Share
     shareBtn.addEventListener("click",()=>{
       if(!dateInput.value)return;
       const url=new URL(window.location.href);
